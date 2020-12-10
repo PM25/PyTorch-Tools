@@ -9,9 +9,9 @@ import torch.nn as nn
 class TrainingSetup(DefaultSetting):
     def __init__(
         self,
-        device=None,
         loss_func=None,
         max_epochs=1000,
+        device=None,
         multi_gpus=True,
         early_stopping=True,
         log=100,

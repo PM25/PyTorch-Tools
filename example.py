@@ -46,28 +46,6 @@ test_loader = torch.utils.data.DataLoader(
 )
 
 
-#%%
-def get_default_device(verbose=False):
-    gpu = True if torch.cuda.is_available() else False
-
-    if gpu:
-        if verbose:
-            print(f"*Using GPU: {torch.cuda.get_device_name(0)}")
-        device = torch.device("cuda:0")
-    else:
-        if verbose:
-            print("*Using CPU")
-        device = torch.device("cpu")
-
-    return device
-
-
-#%%
-def get_default_optimizer(model, lr=0.001):
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-    return optimizer
-
-
 # %%
 #  Cifar-10's classes
 classes = (
@@ -107,7 +85,7 @@ class Model(nn.Module):
 # %% evaluate
 def evaluate(model, test_loader, device=None):
     if device is None:
-        device = get_default_device()
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.eval().to(device)
 
     correct = 0
@@ -151,15 +129,14 @@ if __name__ == "__main__":
     model = Model()
     # setting
     loss_func = nn.CrossEntropyLoss()
-    device = get_default_device(verbose=True)
     max_epochs = 20
-    trainsetup = TrainingSetup(device, loss_func, max_epochs, early_stopping=True)
+    trainsetup = TrainingSetup(loss_func, max_epochs, early_stopping=True)
 
     # training result (use checkpoint class to load best model)
     checkpoint = trainsetup.train(model, train_loader, val_loader)
 
     null_model = Model()
-    null_optimizer = trainsetup.get_default_optimizer(null_model)
+    null_optimizer = trainsetup.default_optimizer(null_model)
     checkpoint_data = checkpoint.load(null_model, null_optimizer)
 
     # evaluate the model
