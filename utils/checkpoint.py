@@ -10,6 +10,7 @@ class Checkpoint:
         now = datetime.now().strftime("%m-%d-%y_%H.%M.%S")
         self.save_folder = Path(base_folder) / Path(now)
         self.last_save = None
+        self.checkpoint_dict = None
 
     #  save checkpoint model
     def save(self, model, optimizer, loss=None, epoch=None):
@@ -32,9 +33,13 @@ class Checkpoint:
             save_path,
         )
         self.last_save = save_path
+        self.clear_tmp()
 
     #  load checkpoint model
-    def load(self, model, optimizer, fname=None):
+    def load(self, model=None, optimizer=None, fname=None):
+        if self.checkpoint_dict != None:
+            return self.checkpoint_dict
+
         if fname != None:
             checkpoint = torch.load(self.save_folder / Path(fname))
         else:
@@ -49,4 +54,16 @@ class Checkpoint:
         epoch = checkpoint["epoch"]
         loss = checkpoint["loss"]
 
+        return self.to_dict(model, optimizer, epoch, loss)
+
+    # turn data to dictionary type
+    def to_dict(self, model, optimizer, epoch=None, loss=None):
         return {"model": model, "optimizer": optimizer, "epoch": epoch, "loss": loss}
+
+    # save model & optimizer inside the class
+    def tmp_save(self, model, optimizer, epoch=None, loss=None):
+        self.checkpoint_dict = self.to_dict(model, optimizer, epoch, loss)
+
+    # clear previous temporary save data
+    def clear_tmp(self):
+        self.checkpoint_dict = None

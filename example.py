@@ -14,17 +14,6 @@ from torch.utils.data import random_split
 
 
 # %%
-gpu = True if torch.cuda.is_available() else False
-
-if gpu:
-    print(f"*Using GPU: {torch.cuda.get_device_name(0)}")
-    device = torch.device("cuda:0")
-else:
-    print("*Using CPU")
-    device = torch.device("cpu")
-
-
-# %%
 transform = transforms.Compose(
     [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
 )
@@ -45,7 +34,7 @@ train_loader = torch.utils.data.DataLoader(
 )
 
 val_loader = torch.utils.data.DataLoader(
-    trainset, batch_size=128, shuffle=True, num_workers=0
+    valset, batch_size=128, shuffle=True, num_workers=0
 )
 
 #  test dataset
@@ -55,6 +44,28 @@ testset = datasets.CIFAR10(
 test_loader = torch.utils.data.DataLoader(
     testset, batch_size=128, shuffle=False, num_workers=0
 )
+
+
+#%%
+def get_default_device(verbose=False):
+    gpu = True if torch.cuda.is_available() else False
+
+    if gpu:
+        if verbose:
+            print(f"*Using GPU: {torch.cuda.get_device_name(0)}")
+        device = torch.device("cuda:0")
+    else:
+        if verbose:
+            print("*Using CPU")
+        device = torch.device("cpu")
+
+    return device
+
+
+#%%
+def get_default_optimizer(model, lr=0.001):
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    return optimizer
 
 
 # %%
@@ -94,7 +105,11 @@ class Model(nn.Module):
 
 
 # %% validation
-def validation(device, model, val_loader):
+def validation(model, val_loader, device=None):
+    if device is None:
+        device = get_default_device()
+    model.eval().to(device)
+    
     running_loss = 0.0
     with torch.no_grad():
         for data in val_loader:
@@ -107,7 +122,9 @@ def validation(device, model, val_loader):
 
 
 # %% evaluate
-def evaluate(device, model, test_loader):
+def evaluate(model, test_loader, device=None):
+    if device is None:
+        device = get_default_device()
     model.eval().to(device)
 
     correct = 0
@@ -145,54 +162,74 @@ def evaluate(device, model, test_loader):
         )
 
 
-# %% training
-def train(
-    device, model, train_loader, epochs, loss_func, optimizer, multi_gpus=True, log=100
-):
-    # model setup
-    model.train().to(device)
-    if multi_gpus and torch.cuda.device_count() > 1:
-        print(f"*Using {torch.cuda.device_count()} GPUs!")
-        model = nn.DataParallel(model)
+# %%
+class TrainingSetup:
+    def __init__(self, device=None, max_epochs=1000, multi_gpus=True, early_stopping=True, log=100):
+        self.max_epochs = max_epochs
+        self.multi_gpus = multi_gpus
+        self.early_stopping = early_stopping
+        self.log = log
+        if device is None:
+            self.device = get_default_device(verbose=True)
+        else:
+            self.device = device
 
-    # early stopping instance
-    early_stopping = EarlyStopping(patience=5)
+    # train model
+    def train(self, model, train_loader, loss_func, optimizer=None):
+        if optimizer is None:
+            optimizer = get_default_optimizer(model)
+        # model setup
+        model.train().to(device)
+        if self.multi_gpus and torch.cuda.device_count() > 1:
+            print(f"*Using {torch.cuda.device_count()} GPUs!")
+            model = nn.DataParallel(model)
 
-    # training start!
-    for epoch in range(1, epochs + 1):
-        running_loss = 0.0
+        # early stopping instance
+        if(self.early_stopping):
+            early_stopping = EarlyStopping(patience=5)
 
-        for step, data in enumerate(train_loader, start=1):
-            inputs, labels = data
-            inputs, labels = inputs.to(device), labels.to(device)
+        # training start!
+        for epoch in range(1, max_epochs + 1):
+            running_loss = 0.0
 
-            # Zero the parameter gradients
-            optimizer.zero_grad()
-            # forward + backward + optimize
-            outputs = model(inputs)
-            loss = loss_func(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            # print statistics
-            running_loss += loss.item()
+            for step, data in enumerate(train_loader, start=1):
+                inputs, labels = data
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
 
-            if step % 100 == 0 or step == len(train_loader):
-                print(
-                    f"[{epoch}/{epochs}, {step}/{len(train_loader)}] loss: {running_loss / step :.3f}"
-                )
+                # Zero the parameter gradients
+                optimizer.zero_grad()
+                # forward + backward + optimize
+                outputs = model(inputs)
+                loss = loss_func(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                # print statistics
+                running_loss += loss.item()
 
-        # train & validation loss
-        train_loss = running_loss / len(train_loader)
-        val_loss = validation(device, model, val_loader)
-        print(f"train loss: {train_loss:.3f}, val loss: {val_loss:.3f}")
+                if step % 100 == 0 or step == len(train_loader):
+                    print(
+                        f"[{epoch}/{max_epochs}, {step}/{len(train_loader)}] loss: {running_loss / step :.3f}"
+                    )
 
-        early_stopping(model, val_loss, optimizer)
-        if early_stopping.early_stop:
-            print("*Early Stopping.")
-            break
+            # train & validation loss
+            train_loss = running_loss / len(train_loader)
+            val_loss = validation(model, val_loader, self.device)
+            print(f"train loss: {train_loss:.3f}, val loss: {val_loss:.3f}")
 
-    print("*Finished Training!")
-    return early_stopping.checkpoint
+            if(self.early_stopping):
+                early_stopping(model, val_loss, optimizer)
+                if early_stopping.get_early_stop() == True:
+                    print("*Early Stopping.")
+                    break
+
+        print("*Finished Training!")
+        if(self.early_stopping):
+            checkpoint = early_stopping.get_checkpoint()
+        else:
+            checkpoint = Checkpoint()
+            checkpoint.tmp_save(model, optimizer, epoch, val_loss)
+        return checkpoint
+        
 
 
 # %% start from here!
@@ -200,20 +237,20 @@ if __name__ == "__main__":
     # init model
     model = Model()
     # setting
-    epochs = 30
     loss_func = nn.CrossEntropyLoss()
-    lr = 0.001
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    device = get_default_device(verbose=True)
+    max_epochs = 5
+    train_setup = TrainingSetup(device, max_epochs, early_stopping=False)
 
     # training result (use checkpoint class to load best model)
-    checkpoint = train(device, model, train_loader, epochs, loss_func, optimizer)
+    checkpoint = train_setup.train(model, train_loader, loss_func)
 
-    null_model = Model().to(device)
-    null_optimizer = optim.Adam(null_model.parameters(), lr=lr)
+    null_model = Model()
+    null_optimizer = get_default_optimizer(null_model)
     checkpoint_data = checkpoint.load(null_model, null_optimizer)
 
     # evaluate the model
     model = checkpoint_data["model"]
-    evaluate(device, model, test_loader)
+    evaluate(model, test_loader)
 
 # %%
