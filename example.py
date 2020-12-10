@@ -104,23 +104,6 @@ class Model(nn.Module):
         return x
 
 
-# %% validation
-def validation(model, val_loader, device=None):
-    if device is None:
-        device = get_default_device()
-    model.eval().to(device)
-    
-    running_loss = 0.0
-    with torch.no_grad():
-        for data in val_loader:
-            inputs, labels = data
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            loss = loss_func(outputs, labels)
-            running_loss += loss.item()
-    return running_loss / len(val_loader)
-
-
 # %% evaluate
 def evaluate(model, test_loader, device=None):
     if device is None:
@@ -162,76 +145,6 @@ def evaluate(model, test_loader, device=None):
         )
 
 
-# %%
-class TrainingSetup:
-    def __init__(self, device=None, max_epochs=1000, multi_gpus=True, early_stopping=True, log=100):
-        self.max_epochs = max_epochs
-        self.multi_gpus = multi_gpus
-        self.early_stopping = early_stopping
-        self.log = log
-        if device is None:
-            self.device = get_default_device(verbose=True)
-        else:
-            self.device = device
-
-    # train model
-    def train(self, model, train_loader, loss_func, optimizer=None):
-        if optimizer is None:
-            optimizer = get_default_optimizer(model)
-        # model setup
-        model.train().to(device)
-        if self.multi_gpus and torch.cuda.device_count() > 1:
-            print(f"*Using {torch.cuda.device_count()} GPUs!")
-            model = nn.DataParallel(model)
-
-        # early stopping instance
-        if(self.early_stopping):
-            early_stopping = EarlyStopping(patience=5)
-
-        # training start!
-        for epoch in range(1, max_epochs + 1):
-            running_loss = 0.0
-
-            for step, data in enumerate(train_loader, start=1):
-                inputs, labels = data
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
-
-                # Zero the parameter gradients
-                optimizer.zero_grad()
-                # forward + backward + optimize
-                outputs = model(inputs)
-                loss = loss_func(outputs, labels)
-                loss.backward()
-                optimizer.step()
-                # print statistics
-                running_loss += loss.item()
-
-                if step % 100 == 0 or step == len(train_loader):
-                    print(
-                        f"[{epoch}/{max_epochs}, {step}/{len(train_loader)}] loss: {running_loss / step :.3f}"
-                    )
-
-            # train & validation loss
-            train_loss = running_loss / len(train_loader)
-            val_loss = validation(model, val_loader, self.device)
-            print(f"train loss: {train_loss:.3f}, val loss: {val_loss:.3f}")
-
-            if(self.early_stopping):
-                early_stopping(model, val_loss, optimizer)
-                if early_stopping.get_early_stop() == True:
-                    print("*Early Stopping.")
-                    break
-
-        print("*Finished Training!")
-        if(self.early_stopping):
-            checkpoint = early_stopping.get_checkpoint()
-        else:
-            checkpoint = Checkpoint()
-            checkpoint.tmp_save(model, optimizer, epoch, val_loss)
-        return checkpoint
-        
-
-
 # %% start from here!
 if __name__ == "__main__":
     # init model
@@ -239,14 +152,14 @@ if __name__ == "__main__":
     # setting
     loss_func = nn.CrossEntropyLoss()
     device = get_default_device(verbose=True)
-    max_epochs = 5
-    train_setup = TrainingSetup(device, max_epochs, early_stopping=False)
+    max_epochs = 20
+    trainsetup = TrainingSetup(device, loss_func, max_epochs, early_stopping=True)
 
     # training result (use checkpoint class to load best model)
-    checkpoint = train_setup.train(model, train_loader, loss_func)
+    checkpoint = trainsetup.train(model, train_loader, val_loader)
 
     null_model = Model()
-    null_optimizer = get_default_optimizer(null_model)
+    null_optimizer = trainsetup.get_default_optimizer(null_model)
     checkpoint_data = checkpoint.load(null_model, null_optimizer)
 
     # evaluate the model
