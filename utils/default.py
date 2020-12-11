@@ -28,6 +28,7 @@ class DefaultSetting:
             if verbose:
                 print(f"*Using GPU: {torch.cuda.get_device_name(0)}")
             device = torch.device("cuda:0")
+            # torch.backends.cudnn.benchmark = True
         else:
             if verbose:
                 print("*Using CPU")

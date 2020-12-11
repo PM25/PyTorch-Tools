@@ -125,22 +125,17 @@ def evaluate(model, test_loader, device=None):
 
 # %% start from here!
 if __name__ == "__main__":
-    # init model
-    model = Model()
     # setting
-    loss_func = nn.CrossEntropyLoss()
+    model = Model()
     max_epochs = 20
-    trainsetup = TrainingSetup(loss_func, max_epochs, early_stopping=True)
+    loss_func = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    modelwrapper = ModelWrapper(model, optimizer, loss_func)
 
-    # training result (use checkpoint class to load best model)
-    checkpoint = trainsetup.train(model, train_loader, val_loader)
-
-    null_model = Model()
-    null_optimizer = trainsetup.default_optimizer(null_model)
-    checkpoint_data = checkpoint.load(null_model, null_optimizer)
+    # training result
+    model = modelwrapper.train(train_loader, val_loader)
 
     # evaluate the model
-    model = checkpoint_data["model"]
     evaluate(model, test_loader)
 
 # %%

@@ -6,26 +6,37 @@ import torch
 import torch.nn as nn
 
 
-class TrainingSetup(DefaultSetting):
+class ModelWrapper(DefaultSetting):
     def __init__(
         self,
+        model,
+        optimizer=None,
         loss_func=None,
-        max_epochs=1000,
         device=None,
         multi_gpus=True,
-        early_stopping=True,
         log=100,
     ):
         super().__init__(device, loss_func)
-        self.max_epochs = max_epochs
+        self.model = model
+        if optimizer is None:
+            self.optimizer = self.default_optimizer(model)
+        else:
+            self.optimizer = optimizer
         self.multi_gpus = multi_gpus
-        self.early_stopping = early_stopping
         self.log = log
+        self.checkpoint = None
 
     # train model
-    def train(self, model, train_loader, val_loader, optimizer=None):
-        if optimizer is None:
-            optimizer = self.default_optimizer(model)
+    def train(
+        self, train_loader, val_loader, max_epochs=1000, enable_early_stopping=True
+    ):
+        print('-' * 15)
+        print(f"Maximum Epochs: {max_epochs}")
+        print(f"Enable Early Stoping: {enable_early_stopping}")
+        print("*Start Training.")
+        print('-' * 15)
+        model = self.model
+        optimizer = self.optimizer
         loss_func = self.loss_func
 
         # model setup
@@ -35,11 +46,11 @@ class TrainingSetup(DefaultSetting):
             model = nn.DataParallel(model)
 
         # early stopping instance
-        if self.early_stopping:
+        if enable_early_stopping:
             early_stopping = EarlyStopping(patience=7)
 
         # training start!
-        for epoch in range(1, self.max_epochs + 1):
+        for epoch in range(1, max_epochs + 1):
             running_loss = 0.0
 
             for step, data in enumerate(train_loader, start=1):
@@ -58,7 +69,7 @@ class TrainingSetup(DefaultSetting):
 
                 if step % 100 == 0 or step == len(train_loader):
                     print(
-                        f"[{epoch}/{self.max_epochs}, {step}/{len(train_loader)}] loss: {running_loss / step :.3f}"
+                        f"[{epoch}/{max_epochs}, {step}/{len(train_loader)}] loss: {running_loss / step :.3f}"
                     )
 
             # train & validation loss
@@ -66,19 +77,20 @@ class TrainingSetup(DefaultSetting):
             val_loss = self.validation(model, val_loader)
             print(f"train loss: {train_loss:.3f}, val loss: {val_loss:.3f}")
 
-            if self.early_stopping:
+            if enable_early_stopping:
                 early_stopping(model, val_loss, optimizer)
                 if early_stopping.get_early_stop() == True:
                     print("*Early Stopping.")
                     break
 
         print("*Finished Training!")
-        if self.early_stopping:
+        if enable_early_stopping:
             checkpoint = early_stopping.get_checkpoint()
         else:
             checkpoint = Checkpoint()
             checkpoint.tmp_save(model, optimizer, epoch, val_loss)
-        return checkpoint
+        self.checkpoint = checkpoint
+        return checkpoint["model"]
 
     # %% validation
     def validation(self, model, val_loader):
