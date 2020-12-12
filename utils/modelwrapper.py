@@ -33,6 +33,7 @@ class ModelWrapper(DefaultSetting):
         if val_loader is None:
             enable_early_stopping = False
 
+        print()
         print("-" * 2, "Training Setup", "-" * 2)
         print(f"Maximum Epochs: {max_epochs}")
         print(f"Enable Early Stoping: {enable_early_stopping}")
@@ -80,7 +81,7 @@ class ModelWrapper(DefaultSetting):
             if val_loader is None:
                 print(f"train loss: {train_loss:.3f}")
             else:
-                val_loss = self.validation(model, val_loader)
+                val_loss = self.validation(val_loader)
                 print(f"train loss: {train_loss:.3f}, val loss: {val_loss:.3f}")
 
                 if enable_early_stopping:
@@ -100,7 +101,8 @@ class ModelWrapper(DefaultSetting):
         return self.model
 
     # %% validation
-    def validation(self, model, val_loader):
+    def validation(self, val_loader):
+        model = self.model
         model.eval().to(self.device)
         loss_func = self.loss_func
         running_loss = 0.0
@@ -114,6 +116,7 @@ class ModelWrapper(DefaultSetting):
         return running_loss / len(val_loader)
 
     def classification_evaluate(self, test_loader, classes):
+        print("-" * 2, "Evaluation Report", "-" * 2)
         model = self.model
         model.eval().to(self.device)
 

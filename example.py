@@ -9,8 +9,6 @@ import torchvision
 import torchvision.models as models
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-import torch.nn.utils.prune as prune
-from torch.utils.data import random_split
 
 
 # %%
@@ -24,52 +22,27 @@ transform = transforms.Compose(
 
 # %%
 #  train & validation dataset
-dataset = datasets.CIFAR10(
-    root="./data", train=True, download=True, transform=transform
-)
-
-trainset_count = int(len(dataset) * 0.8)
-valset_count = len(dataset) - trainset_count
-trainset, valset = random_split(dataset, [trainset_count, valset_count])
-
-train_loader = torch.utils.data.DataLoader(
-    trainset, batch_size=128, shuffle=True, num_workers=0
-)
-
-val_loader = torch.utils.data.DataLoader(
-    valset, batch_size=128, shuffle=True, num_workers=0
-)
+train_loader, val_loader = LoadData(
+    dataset=datasets.CIFAR10(
+        root="./data", train=True, download=True, transform=transform
+    )
+).get_dataloader([0.8, 0.2])
 
 #  test dataset
-testset = datasets.CIFAR10(
-    root="./data", train=False, download=True, transform=transform
-)
-test_loader = torch.utils.data.DataLoader(
-    testset, batch_size=128, shuffle=False, num_workers=0
-)
+test_loader = LoadData(
+    dataset=datasets.CIFAR10(
+        root="./data", train=False, download=True, transform=transform
+    )
+).get_dataloader()
 
 
-# # %% tmp section
+# %% tmp section
 # from sklearn.datasets import load_boston
 
-# data = load_boston()
-# X, y = load_boston(return_X_y=True)
+# train_loader, val_loader, test_loader = LoadData(
+#     X_y=load_boston(return_X_y=True)
+# ).get_dataloader([0.7, 0.2, 0.1])
 
-# X_train = torch.from_numpy(X).float()
-# y_train = torch.from_numpy(y).float()
-# dataset = torch.utils.data.TensorDataset(X_train, y_train)
-
-# trainset_count = int(len(dataset) * 0.8)
-# valset_count = len(dataset) - trainset_count
-# trainset, valset = random_split(dataset, [trainset_count, valset_count])
-
-# train_loader = torch.utils.data.DataLoader(
-#     trainset, batch_size=32, shuffle=True, num_workers=0
-# )
-
-# val_loader = torch.utils.data.DataLoader(
-#     valset, batch_size=32, shuffle=True, num_workers=0
-# )
 
 # %%
 #  Cifar-10's classes
@@ -111,18 +84,15 @@ class Model(nn.Module):
 if __name__ == "__main__":
     # setting
     model = Model()
-    loss_func = nn.MSELoss()
+    loss_func = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     modelwrapper = ModelWrapper(model, loss_func, optimizer)
 
     # training
-    modelwrapper.train(train_loader, val_loader, max_epochs=50)
-
+    modelwrapper.train(train_loader, val_loader, max_epochs=5)
     # # resume training
-    # modelwrapper.train(train_loader, val_loader, max_epochs=20)
+    modelwrapper.train(train_loader, val_loader, max_epochs=20)
 
     # evaluate the model
-    # modelwrapper.classification_evaluate(test_loader, classes)
-
-# %%
+    print(f"\ntest loss: {modelwrapper.validation(test_loader)}")
+    modelwrapper.classification_evaluate(test_loader, classes)
