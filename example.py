@@ -15,9 +15,12 @@ from torch.utils.data import random_split
 
 # %%
 transform = transforms.Compose(
-    [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    [
+        transforms.Resize((32, 32)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ]
 )
-
 
 # %%
 #  train & validation dataset
@@ -45,6 +48,28 @@ test_loader = torch.utils.data.DataLoader(
     testset, batch_size=128, shuffle=False, num_workers=0
 )
 
+
+# # %% tmp section
+# from sklearn.datasets import load_boston
+
+# data = load_boston()
+# X, y = load_boston(return_X_y=True)
+
+# X_train = torch.from_numpy(X).float()
+# y_train = torch.from_numpy(y).float()
+# dataset = torch.utils.data.TensorDataset(X_train, y_train)
+
+# trainset_count = int(len(dataset) * 0.8)
+# valset_count = len(dataset) - trainset_count
+# trainset, valset = random_split(dataset, [trainset_count, valset_count])
+
+# train_loader = torch.utils.data.DataLoader(
+#     trainset, batch_size=32, shuffle=True, num_workers=0
+# )
+
+# val_loader = torch.utils.data.DataLoader(
+#     valset, batch_size=32, shuffle=True, num_workers=0
+# )
 
 # %%
 #  Cifar-10's classes
@@ -82,60 +107,22 @@ class Model(nn.Module):
         return x
 
 
-# %% evaluate
-def evaluate(model, test_loader, device=None):
-    if device is None:
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model.eval().to(device)
-
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for data in test_loader:
-            inputs, labels = data
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    print(
-        f"Accuracy of the network on the {len(test_loader)} test inputs: {(100 * correct / total)} %"
-    )
-
-    class_correct = list(0.0 for i in range(len(classes)))
-    class_total = list(0.0 for i in range(len(classes)))
-    with torch.no_grad():
-        for data in test_loader:
-            inputs, labels = data
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            _, predicted = torch.max(outputs, 1)
-            c = (predicted == labels).squeeze()
-            for i in range(len(labels)):
-                label = labels[i]
-                class_correct[label] += c[i].item()
-                class_total[label] += 1
-
-    for i in range(len(classes)):
-        print(
-            f"Accuracy of {classes[i]: >5} : {100 * class_correct[i] / class_total[i]:.0f} %"
-        )
-
-
 # %% start from here!
 if __name__ == "__main__":
     # setting
     model = Model()
-    max_epochs = 20
-    loss_func = nn.CrossEntropyLoss()
+    loss_func = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    modelwrapper = ModelWrapper(model, optimizer, loss_func)
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    modelwrapper = ModelWrapper(model, loss_func, optimizer)
 
-    # training result
-    model = modelwrapper.train(train_loader, val_loader)
+    # training
+    modelwrapper.train(train_loader, val_loader, max_epochs=50)
+
+    # # resume training
+    # modelwrapper.train(train_loader, val_loader, max_epochs=20)
 
     # evaluate the model
-    evaluate(model, test_loader)
+    # modelwrapper.classification_evaluate(test_loader, classes)
 
 # %%

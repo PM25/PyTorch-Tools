@@ -10,8 +10,8 @@ class ModelWrapper(DefaultSetting):
     def __init__(
         self,
         model,
-        optimizer=None,
         loss_func=None,
+        optimizer=None,
         device=None,
         multi_gpus=True,
         log=100,
@@ -28,13 +28,16 @@ class ModelWrapper(DefaultSetting):
 
     # train model
     def train(
-        self, train_loader, val_loader, max_epochs=1000, enable_early_stopping=True
+        self, train_loader, val_loader=None, max_epochs=1000, enable_early_stopping=True
     ):
-        print('-' * 15)
+        if val_loader is None:
+            enable_early_stopping = False
+
+        print("-" * 2, "Training Setup", "-" * 2)
         print(f"Maximum Epochs: {max_epochs}")
         print(f"Enable Early Stoping: {enable_early_stopping}")
+        print("-" * 20)
         print("*Start Training.")
-        print('-' * 15)
         model = self.model
         optimizer = self.optimizer
         loss_func = self.loss_func
@@ -47,7 +50,7 @@ class ModelWrapper(DefaultSetting):
 
         # early stopping instance
         if enable_early_stopping:
-            early_stopping = EarlyStopping(patience=7)
+            early_stopping = EarlyStopping(patience=5)
 
         # training start!
         for epoch in range(1, max_epochs + 1):
@@ -74,14 +77,17 @@ class ModelWrapper(DefaultSetting):
 
             # train & validation loss
             train_loss = running_loss / len(train_loader)
-            val_loss = self.validation(model, val_loader)
-            print(f"train loss: {train_loss:.3f}, val loss: {val_loss:.3f}")
+            if val_loader is None:
+                print(f"train loss: {train_loss:.3f}")
+            else:
+                val_loss = self.validation(model, val_loader)
+                print(f"train loss: {train_loss:.3f}, val loss: {val_loss:.3f}")
 
-            if enable_early_stopping:
-                early_stopping(model, val_loss, optimizer)
-                if early_stopping.get_early_stop() == True:
-                    print("*Early Stopping.")
-                    break
+                if enable_early_stopping:
+                    early_stopping(model, val_loss, optimizer)
+                    if early_stopping.get_early_stop() == True:
+                        print("*Early Stopping.")
+                        break
 
         print("*Finished Training!")
         if enable_early_stopping:
@@ -90,7 +96,8 @@ class ModelWrapper(DefaultSetting):
             checkpoint = Checkpoint()
             checkpoint.tmp_save(model, optimizer, epoch, val_loss)
         self.checkpoint = checkpoint
-        return checkpoint["model"]
+        self.model = checkpoint.load(model, optimizer)["model"]
+        return self.model
 
     # %% validation
     def validation(self, model, val_loader):
@@ -105,3 +112,35 @@ class ModelWrapper(DefaultSetting):
                 loss = loss_func(outputs, labels)
                 running_loss += loss.item()
         return running_loss / len(val_loader)
+
+    def classification_evaluate(self, test_loader, classes):
+        model = self.model
+        model.eval().to(self.device)
+
+        total = 0
+        correct = 0
+        class_correct = list(0.0 for i in range(len(classes)))
+        class_total = list(0.0 for i in range(len(classes)))
+        with torch.no_grad():
+            for data in test_loader:
+                inputs, labels = data
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
+                outputs = model(inputs)
+                _, predicted = torch.max(outputs, 1)
+
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+                c = (predicted == labels).squeeze()
+                for i in range(len(labels)):
+                    label = labels[i]
+                    class_correct[label] += c[i].item()
+                    class_total[label] += 1
+
+        print(
+            f"Accuracy of the network on the {len(test_loader)} test inputs: {(100 * correct / total)} %"
+        )
+        for i in range(len(classes)):
+            print(
+                f"Accuracy of {classes[i]: >5} : {100 * class_correct[i] / class_total[i]:.0f} %"
+            )
