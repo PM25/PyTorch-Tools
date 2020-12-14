@@ -117,40 +117,7 @@ class ModelWrapper(DefaultSetting):
                 running_loss += loss.item()
         return running_loss / len(val_loader)
 
-    def classification_evaluate(self, test_loader, classes):
-        print("-" * 2, "Evaluation Report", "-" * 2)
-        model = self.model
-        model.eval().to(self.device)
-
-        total = 0
-        correct = 0
-        class_correct = list(0.0 for i in range(len(classes)))
-        class_total = list(0.0 for i in range(len(classes)))
-        with torch.no_grad():
-            for data in test_loader:
-                inputs, labels = data
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
-                outputs = model(inputs)
-                _, predicted = torch.max(outputs, 1)
-
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-
-                c = (predicted == labels).squeeze()
-                for i in range(len(labels)):
-                    label = labels[i]
-                    class_correct[label] += c[i].item()
-                    class_total[label] += 1
-
-        print(
-            f"Accuracy of the network on the {total} test inputs: {(100 * correct / total)} %"
-        )
-        for i in range(len(classes)):
-            print(
-                f"Accuracy of {classes[i]: >5} : {100 * class_correct[i] / class_total[i]:.0f} %"
-            )
-
-    def binary_classification_evaluate(self, test_loader, classes=["0", "1"]):
+    def classification_evaluate(self, test_loader, classes, binary=False):
         print("-" * 2, "Evaluation Report", "-" * 2)
         model = self.model
         model.eval().to(self.device)
@@ -164,12 +131,15 @@ class ModelWrapper(DefaultSetting):
                 inputs, labels = data
                 inputs, labels = inputs.to(self.device), labels.to(self.device).long()
                 outputs = model(inputs)
-                outputs = torch.round(outputs)
+                if not binary:
+                    _, predicted = torch.max(outputs, 1)
+                else:
+                    predicted = torch.round(outputs)
 
                 total += labels.size(0)
-                correct += (outputs == labels).sum().item()
+                correct += (predicted == labels).sum().item()
 
-                c = (outputs == labels).squeeze()
+                c = (predicted == labels).squeeze()
                 for i in range(len(labels)):
                     label = labels[i].item()
                     class_correct[label] += c[i].item()

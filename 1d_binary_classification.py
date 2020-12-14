@@ -97,6 +97,8 @@ if __name__ == "__main__":
     results_df.to_csv("result.csv", index=False)
     # # evaluate the model
     print(f"\ntest loss: {modelwrapper.validation(test_loader)}")
-    modelwrapper.binary_classification_evaluate(test_loader, ["Not Cancel", "Cancel"])
+    modelwrapper.classification_evaluate(
+        test_loader, ["Not Cancel", "Cancel"], binary=True
+    )
 
 # %%
