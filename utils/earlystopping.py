@@ -24,6 +24,10 @@ class EarlyStopping:
         else:
             self.counter = 0
 
+    # reset the counter
+    def reset_counter(self):
+        self.counter = 0
+
     # check if the early stopping criteria is meet
     def get_early_stop(self):
         return self.early_stop

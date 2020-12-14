@@ -5,7 +5,7 @@ from utils.earlystopping import EarlyStopping
 import torch
 import torch.nn as nn
 
-
+# TODO: add support for tensorboard & clean code
 class ModelWrapper(DefaultSetting):
     def __init__(
         self,
@@ -25,6 +25,7 @@ class ModelWrapper(DefaultSetting):
         self.multi_gpus = multi_gpus
         self.log = log
         self.checkpoint = None
+        self.early_stopping = None
 
     # train model
     def train(
@@ -39,19 +40,20 @@ class ModelWrapper(DefaultSetting):
         print(f"Enable Early Stoping: {enable_early_stopping}")
         print("-" * 20)
         print("*Start Training.")
-        model = self.model
-        optimizer = self.optimizer
         loss_func = self.loss_func
 
         # model setup
-        model.train().to(self.device)
+        self.model.train().to(self.device)
         if self.multi_gpus and torch.cuda.device_count() > 1:
             print(f"*Using {torch.cuda.device_count()} GPUs!")
-            model = nn.DataParallel(model)
+            self.model = nn.DataParallel(self.model)
 
         # early stopping instance
         if enable_early_stopping:
-            early_stopping = EarlyStopping(patience=5)
+            if self.early_stopping is None:
+                self.early_stopping = EarlyStopping(patience=5)
+            else:
+                self.early_stopping.reset_counter()
 
         # training start!
         for epoch in range(1, max_epochs + 1):
@@ -62,12 +64,12 @@ class ModelWrapper(DefaultSetting):
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
 
                 # Zero the parameter gradients
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
                 # forward + backward + optimize
-                outputs = model(inputs)
+                outputs = self.model(inputs)
                 loss = loss_func(outputs, labels)
                 loss.backward()
-                optimizer.step()
+                self.optimizer.step()
                 # print statistics
                 running_loss += loss.item()
 
@@ -81,36 +83,36 @@ class ModelWrapper(DefaultSetting):
             if val_loader is None:
                 print(f"train loss: {train_loss:.3f}")
             else:
+                # TODO: fixed the problem that first validation is not correct
                 val_loss = self.validation(val_loader)
                 print(f"train loss: {train_loss:.3f}, val loss: {val_loss:.3f}")
 
                 if enable_early_stopping:
-                    early_stopping(model, val_loss, optimizer)
-                    if early_stopping.get_early_stop() == True:
+                    self.early_stopping(self.model, val_loss, self.optimizer)
+                    if self.early_stopping.get_early_stop() == True:
                         print("*Early Stopping.")
                         break
 
         print("*Finished Training!")
         if enable_early_stopping:
-            checkpoint = early_stopping.get_checkpoint()
+            checkpoint = self.early_stopping.get_checkpoint()
         else:
             checkpoint = Checkpoint()
-            checkpoint.tmp_save(model, optimizer, epoch, val_loss)
+            checkpoint.tmp_save(self.model, self.optimizer, epoch, val_loss)
         self.checkpoint = checkpoint
-        self.model = checkpoint.load(model, optimizer)["model"]
+        self.model = checkpoint.load(self.model, self.optimizer)["model"]
         return self.model
 
     # %% validation
     def validation(self, val_loader):
-        model = self.model
-        model.eval().to(self.device)
+        self.model.eval().to(self.device)
         loss_func = self.loss_func
         running_loss = 0.0
         with torch.no_grad():
             for data in val_loader:
                 inputs, labels = data
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
-                outputs = model(inputs)
+                outputs = self.model(inputs)
                 loss = loss_func(outputs, labels)
                 running_loss += loss.item()
         return running_loss / len(val_loader)
@@ -141,9 +143,42 @@ class ModelWrapper(DefaultSetting):
                     class_total[label] += 1
 
         print(
-            f"Accuracy of the network on the {len(test_loader)} test inputs: {(100 * correct / total)} %"
+            f"Accuracy of the network on the {total} test inputs: {(100 * correct / total)} %"
         )
         for i in range(len(classes)):
             print(
                 f"Accuracy of {classes[i]: >5} : {100 * class_correct[i] / class_total[i]:.0f} %"
+            )
+
+    def binary_classification_evaluate(self, test_loader, classes=["0", "1"]):
+        print("-" * 2, "Evaluation Report", "-" * 2)
+        model = self.model
+        model.eval().to(self.device)
+
+        total = 0
+        correct = 0
+        class_correct = list(0.0 for i in range(len(classes)))
+        class_total = list(0.0 for i in range(len(classes)))
+        with torch.no_grad():
+            for data in test_loader:
+                inputs, labels = data
+                inputs, labels = inputs.to(self.device), labels.to(self.device).long()
+                outputs = model(inputs)
+                outputs = torch.round(outputs)
+
+                total += labels.size(0)
+                correct += (outputs == labels).sum().item()
+
+                c = (outputs == labels).squeeze()
+                for i in range(len(labels)):
+                    label = labels[i].item()
+                    class_correct[label] += c[i].item()
+                    class_total[label] += 1
+
+        print(
+            f"Accuracy of the network on the {total} test inputs: {(100 * correct / total):.3f} %"
+        )
+        for i in range(len(classes)):
+            print(
+                f"Accuracy of {classes[i]: >5} : {100 * class_correct[i] / class_total[i]:.1f} % ({class_total[i]:.0f} inputs)"
             )

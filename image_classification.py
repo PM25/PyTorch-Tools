@@ -36,14 +36,6 @@ test_loader = LoadData(
 ).get_dataloader()
 
 
-# %% tmp section
-# from sklearn.datasets import load_boston
-
-# train_loader, val_loader, test_loader = LoadData(
-#     X_y=load_boston(return_X_y=True)
-# ).get_dataloader([0.7, 0.2, 0.1])
-
-
 # %%
 #  Cifar-10's classes
 classes = (
@@ -59,39 +51,20 @@ classes = (
     "truck",
 )
 
-# model = models.resnet50(pretrained=True)
-class Model(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv1 = nn.Conv2d(3, 8, 3)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(8, 16, 3)
-        self.fc1 = nn.Linear(16 * 6 * 6, 120)
-        self.fc2 = nn.Linear(120, 64)
-        self.fc3 = nn.Linear(64, len(classes))
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(x.size(0), -1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
-
 
 # %% start from here!
 if __name__ == "__main__":
     # setting
-    model = Model()
+    # model = models.resnet50(pretrained=True)
+    model = ClassificationModel(0, nout=len(classes))
     loss_func = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     modelwrapper = ModelWrapper(model, loss_func, optimizer)
 
     # training
-    modelwrapper.train(train_loader, val_loader, max_epochs=5)
-    # # resume training
     modelwrapper.train(train_loader, val_loader, max_epochs=20)
+    # # resume training
+    modelwrapper.train(train_loader, val_loader, max_epochs=5)
 
     # evaluate the model
     print(f"\ntest loss: {modelwrapper.validation(test_loader)}")
