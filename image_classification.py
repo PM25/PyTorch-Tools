@@ -56,7 +56,7 @@ classes = (
 if __name__ == "__main__":
     # setting
     # model = models.resnet50(pretrained=True)
-    model = ClassificationModel(0, nout=len(classes))
+    model = ImageClassificationModel(0, nout=len(classes))
     loss_func = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     modelwrapper = ModelWrapper(model, loss_func, optimizer)
