@@ -62,10 +62,10 @@ if __name__ == "__main__":
     modelwrapper = ModelWrapper(model, loss_func, optimizer)
 
     # training
-    modelwrapper.train(train_loader, val_loader, max_epochs=20)
-    # # resume training
     modelwrapper.train(train_loader, val_loader, max_epochs=5)
+    # # resume training
+    modelwrapper.train(train_loader, val_loader, max_epochs=20)
 
     # evaluate the model
     print(f"\ntest loss: {modelwrapper.validation(test_loader)}")
-    modelwrapper.classification_evaluate(test_loader, classes)
+    modelwrapper.classification_report(test_loader, classes)

@@ -4,6 +4,7 @@ from utils.earlystopping import EarlyStopping
 
 import torch
 import torch.nn as nn
+from sklearn.metrics import classification_report
 
 # TODO: add support for tensorboard & clean code
 class ModelWrapper(DefaultSetting):
@@ -40,7 +41,6 @@ class ModelWrapper(DefaultSetting):
         print(f"Enable Early Stoping: {enable_early_stopping}")
         print("-" * 20)
         print("*Start Training.")
-        loss_func = self.loss_func
 
         # model setup
         self.model.train().to(self.device)
@@ -67,7 +67,7 @@ class ModelWrapper(DefaultSetting):
                 self.optimizer.zero_grad()
                 # forward + backward + optimize
                 outputs = self.model(inputs)
-                loss = loss_func(outputs, labels)
+                loss = self.loss_func(outputs, labels)
                 loss.backward()
                 self.optimizer.step()
                 # print statistics
@@ -106,26 +106,23 @@ class ModelWrapper(DefaultSetting):
     # %% validation
     def validation(self, val_loader):
         self.model.eval().to(self.device)
-        loss_func = self.loss_func
         running_loss = 0.0
         with torch.no_grad():
             for data in val_loader:
                 inputs, labels = data
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
                 outputs = self.model(inputs)
-                loss = loss_func(outputs, labels)
+                loss = self.loss_func(outputs, labels)
                 running_loss += loss.item()
         return running_loss / len(val_loader)
 
-    def classification_evaluate(self, test_loader, classes, binary=False):
-        print("-" * 2, "Evaluation Report", "-" * 2)
+    # classification report of the model on test data
+    def classification_report(self, test_loader, target_names=None, binary=False):
+        print("-" * 5, "Classification Report", "-" * 5)
         model = self.model
         model.eval().to(self.device)
 
-        total = 0
-        correct = 0
-        class_correct = list(0.0 for i in range(len(classes)))
-        class_total = list(0.0 for i in range(len(classes)))
+        y_pred, y_true = [], []
         with torch.no_grad():
             for data in test_loader:
                 inputs, labels = data
@@ -136,19 +133,9 @@ class ModelWrapper(DefaultSetting):
                 else:
                     predicted = torch.round(outputs)
 
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
+                y_true += labels.squeeze().cpu().tolist()
+                y_pred += predicted.squeeze().cpu().tolist()
 
-                c = (predicted == labels).squeeze()
-                for i in range(len(labels)):
-                    label = labels[i].item()
-                    class_correct[label] += c[i].item()
-                    class_total[label] += 1
-
-        print(
-            f"Accuracy of the network on the {total} test inputs: {(100 * correct / total):.3f} %"
-        )
-        for i in range(len(classes)):
-            print(
-                f"Accuracy of {classes[i]: >5} : {100 * class_correct[i] / class_total[i]:.1f} % ({class_total[i]:.0f} inputs)"
-            )
+        report = classification_report(y_true, y_pred, target_names=target_names)
+        print(report)
+        return report

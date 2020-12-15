@@ -16,7 +16,6 @@ def get_columns_with_nan(df):
     nan_values = df.isna()
     nan_columns = nan_values.any()
     columns_with_nan = df.columns[nan_columns].tolist()
-    # print(f"Columns with NaN: {columns_with_nan}")
     return columns_with_nan
 
 
@@ -28,14 +27,7 @@ pd_y = train_X["is_canceled"]
 pd_X = train_X.iloc[
     :,
     ~train_X.columns.isin(
-        [
-            "is_canceled",
-            "ID",
-            "adr",
-            "reservation_status",
-            "reservation_status_date",
-            "country",
-        ]
+        ["is_canceled", "ID", "adr", "reservation_status", "reservation_status_date",]
     ),
 ]
 get_columns_with_nan(pd_X)
@@ -69,15 +61,14 @@ if __name__ == "__main__":
 
     # training
     model = modelwrapper.train(train_loader, val_loader, max_epochs=50)
-    # # resume training
-    # modelwrapper.train(train_loader, val_loader, max_epochs=5)
 
     model.cpu()
     pred_y = model(torch.from_numpy(numpy_X).float())
-    dataset = pd.DataFrame()
-    dataset["is_cancel"] = numpy_y
+    dataset = pd.DataFrame(numpy_y)
+    dataset.columns = ["True"]
 
     dataset2 = pd.DataFrame(pred_y.detach().numpy())
+    dataset2.columns = ["prediction"]
 
     tmp_df = train_X.iloc[
         :,
@@ -88,15 +79,15 @@ if __name__ == "__main__":
                 "adr",
                 "reservation_status",
                 "reservation_status_date",
-                "country",
             ]
         ),
     ]
+
     results_df = pd.concat([tmp_df, dataset, dataset2], axis=1)
     results_df.to_csv("result.csv", index=False)
     # # evaluate the model
     print(f"\ntest loss: {modelwrapper.validation(test_loader)}")
-    modelwrapper.classification_evaluate(
+    modelwrapper.classification_report(
         test_loader, ["Not Cancel", "Cancel"], binary=True
     )
 

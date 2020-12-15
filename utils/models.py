@@ -43,7 +43,6 @@ class ClassificationModel(nn.Module):
         self.fc5 = nn.Linear(512, 256)
         self.fc6 = nn.Linear(256, 64)
         self.fc7 = nn.Linear(64, nout)
-        self.softmax = nn.Softmax(dim=1)
         self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):
@@ -56,7 +55,7 @@ class ClassificationModel(nn.Module):
         x = F.relu(self.fc5(x))
         x = self.dropout(F.relu(self.fc6(x)))
         x = self.fc7(x).squeeze()
-        return self.softmax(x)
+        return x
 
 
 class ImageClassificationModel(nn.Module):
@@ -70,7 +69,6 @@ class ImageClassificationModel(nn.Module):
         self.batchnorm1d1 = nn.BatchNorm1d(128)
         self.fc2 = nn.Linear(128, 64)
         self.fc3 = nn.Linear(64, nout)
-        self.softmax = nn.Softmax(dim=1)
         self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):
@@ -82,4 +80,4 @@ class ImageClassificationModel(nn.Module):
         x = self.batchnorm1d1(x)
         x = self.dropout(F.relu(self.fc2(x)))
         x = self.fc3(x)
-        return self.softmax(x)
+        return x
