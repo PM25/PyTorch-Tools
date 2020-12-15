@@ -16,7 +16,6 @@ def get_columns_with_nan(df):
     nan_values = df.isna()
     nan_columns = nan_values.any()
     columns_with_nan = df.columns[nan_columns].tolist()
-    # print(f"Columns with NaN: {columns_with_nan}")
     return columns_with_nan
 
 
@@ -65,7 +64,7 @@ if __name__ == "__main__":
     modelwrapper = ModelWrapper(model, loss_func, optimizer)
 
     # training
-    model = modelwrapper.train(train_loader, val_loader, max_epochs=50)
+    model = modelwrapper.train(train_loader, val_loader, max_epochs=1)
 
     # pred_y = model(torch.from_numpy(numpy_X).float().to("cuda:0"))
     model = model.eval().cpu()
@@ -96,8 +95,7 @@ if __name__ == "__main__":
     results_df = pd.concat([tmp_df, dataset, dataset2], axis=1)
     results_df.to_csv("result.csv", index=False)
     # # evaluate the model
-    print(f"\ntest loss: {modelwrapper.validation(test_loader)}")
-    report = modelwrapper.classification_report(test_loader, list(cats))
+    report = modelwrapper.classification_report(test_loader, list(cats), visualize=True)
     with open("dl_test.txt", "a") as ofile:
         ofile.write(f"Method: with all type of hotel\n")
         ofile.write(report)

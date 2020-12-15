@@ -4,6 +4,9 @@ from utils.earlystopping import EarlyStopping
 
 import torch
 import torch.nn as nn
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report
 
 # TODO: add support for tensorboard & clean code
@@ -117,8 +120,11 @@ class ModelWrapper(DefaultSetting):
         return running_loss / len(val_loader)
 
     # classification report of the model on test data
-    def classification_report(self, test_loader, target_names=None, binary=False):
-        print("-" * 5, "Classification Report", "-" * 5)
+    def classification_report(
+        self, test_loader, target_names=None, binary=False, visualize=False
+    ):
+        print("-" * 10, "Classification Report", "-" * 10)
+        print(f"loss: {self.validation(test_loader)}")
         model = self.model
         model.eval().to(self.device)
 
@@ -136,6 +142,17 @@ class ModelWrapper(DefaultSetting):
                 y_true += labels.squeeze().cpu().tolist()
                 y_pred += predicted.squeeze().cpu().tolist()
 
-        report = classification_report(y_true, y_pred, target_names=target_names)
-        print(report)
+        if visualization:
+            report = classification_report(
+                y_true, y_pred, target_names=target_names, output_dict=True
+            )
+            for key in ["accuracy", "macro avg", "weighted avg"]:
+                report.pop(key, None)
+            for key in report:
+                report[key].pop("support", None)
+            report = sns.heatmap(pd.DataFrame(report).T, annot=True)
+            plt.show()
+        else:
+            report = classification_report(y_true, y_pred, target_names=target_names)
+            print(report)
         return report

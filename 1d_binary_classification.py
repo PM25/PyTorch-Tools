@@ -33,8 +33,9 @@ pd_X = train_X.iloc[
 get_columns_with_nan(pd_X)
 
 #%%
-pd_X["children"] = pd_X["children"].fillna(0)
+pd_X.loc[:, "children"] = pd_X["children"].fillna(0)
 nan_cols = list(get_columns_with_nan(pd_X))
+#%%
 print(nan_cols)
 pd_X[nan_cols] = pd_X[nan_cols].astype(str)
 pd_X = pd.get_dummies(pd_X)
@@ -55,7 +56,6 @@ if __name__ == "__main__":
     # setting
     model = BinaryClassificationModel(numpy_X.shape[1])
     loss_func = nn.BCELoss()
-    # loss_func = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     modelwrapper = ModelWrapper(model, loss_func, optimizer)
 
@@ -86,7 +86,6 @@ if __name__ == "__main__":
     results_df = pd.concat([tmp_df, dataset, dataset2], axis=1)
     results_df.to_csv("result.csv", index=False)
     # # evaluate the model
-    print(f"\ntest loss: {modelwrapper.validation(test_loader)}")
     modelwrapper.classification_report(
         test_loader, ["Not Cancel", "Cancel"], binary=True
     )
