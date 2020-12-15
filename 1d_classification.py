@@ -64,7 +64,7 @@ if __name__ == "__main__":
     modelwrapper = ModelWrapper(model, loss_func, optimizer)
 
     # training
-    model = modelwrapper.train(train_loader, val_loader, max_epochs=1)
+    model = modelwrapper.train(train_loader, val_loader, max_epochs=50)
 
     # pred_y = model(torch.from_numpy(numpy_X).float().to("cuda:0"))
     model = model.eval().cpu()

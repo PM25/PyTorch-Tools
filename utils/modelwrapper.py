@@ -1,12 +1,10 @@
 from utils.checkpoint import Checkpoint
 from utils.default import DefaultSetting
 from utils.earlystopping import EarlyStopping
+from utils.visualization import Visualization
 
 import torch
 import torch.nn as nn
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report
 
 # TODO: add support for tensorboard & clean code
@@ -107,19 +105,20 @@ class ModelWrapper(DefaultSetting):
         return self.model
 
     # %% validation
+    @torch.no_grad()
     def validation(self, val_loader):
         self.model.eval().to(self.device)
         running_loss = 0.0
-        with torch.no_grad():
-            for data in val_loader:
-                inputs, labels = data
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
-                outputs = self.model(inputs)
-                loss = self.loss_func(outputs, labels)
-                running_loss += loss.item()
+        for data in val_loader:
+            inputs, labels = data
+            inputs, labels = inputs.to(self.device), labels.to(self.device)
+            outputs = self.model(inputs)
+            loss = self.loss_func(outputs, labels)
+            running_loss += loss.item()
         return running_loss / len(val_loader)
 
     # classification report of the model on test data
+    @torch.no_grad()
     def classification_report(
         self, test_loader, target_names=None, binary=False, visualize=False
     ):
@@ -129,30 +128,23 @@ class ModelWrapper(DefaultSetting):
         model.eval().to(self.device)
 
         y_pred, y_true = [], []
-        with torch.no_grad():
-            for data in test_loader:
-                inputs, labels = data
-                inputs, labels = inputs.to(self.device), labels.to(self.device).long()
-                outputs = model(inputs)
-                if not binary:
-                    _, predicted = torch.max(outputs, 1)
-                else:
-                    predicted = torch.round(outputs)
+        for data in test_loader:
+            inputs, labels = data
+            inputs, labels = inputs.to(self.device), labels.to(self.device).long()
+            outputs = model(inputs)
+            if not binary:
+                _, predicted = torch.max(outputs, 1)
+            else:
+                predicted = torch.round(outputs)
 
-                y_true += labels.squeeze().cpu().tolist()
-                y_pred += predicted.squeeze().cpu().tolist()
+            y_true += labels.squeeze().cpu().tolist()
+            y_pred += predicted.squeeze().cpu().tolist()
 
-        if visualization:
-            report = classification_report(
-                y_true, y_pred, target_names=target_names, output_dict=True
-            )
-            for key in ["accuracy", "macro avg", "weighted avg"]:
-                report.pop(key, None)
-            for key in report:
-                report[key].pop("support", None)
-            report = sns.heatmap(pd.DataFrame(report).T, annot=True)
-            plt.show()
-        else:
-            report = classification_report(y_true, y_pred, target_names=target_names)
-            print(report)
+        if visualize:
+            vis = Visualization(y_true, y_pred, target_names)
+            vis.confusion_matrix()
+            vis.classification_report()
+            vis.show()
+        report = classification_report(y_true, y_pred, target_names=target_names)
+        print(report)
         return report
