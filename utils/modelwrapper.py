@@ -29,6 +29,40 @@ class ModelWrapper(DefaultSetting):
         self.checkpoint = None
         self.early_stopping = None
 
+    # TODO: haven't check this this function (__call__) yet
+    # update model setting
+    def __call__(
+        self,
+        model=None,
+        loss_func=None,
+        optimizer=None,
+        device=None,
+        multi_gpus=None,
+        log=None,
+    ):
+        if model is not None:
+            self.model = model
+
+        if optimizer is None:
+            self.optimizer = self.default_optimizer(self.model)
+        else:
+            self.optimizer = optimizer
+
+        if loss_func is not None:
+            self.loss_func = loss_func
+
+        if device is not None:
+            self.device = device
+
+        if multi_gpus is not None:
+            self.multi_gpus = multi_gpus
+
+        if self.log is not None:
+            self.log = log
+
+        self.checkpoint = None
+        self.early_stopping = None
+
     # train model
     def train(
         self, train_loader, val_loader=None, max_epochs=1000, enable_early_stopping=True
@@ -84,7 +118,7 @@ class ModelWrapper(DefaultSetting):
             if val_loader is None:
                 print(f"train loss: {train_loss:.3f}")
             else:
-                # TODO: fixed the problem that first validation is not correct
+                # FIXME: fixed the problem that first validation is not correct
                 val_loss = self.validation(val_loader)
                 print(f"train loss: {train_loss:.3f}, val loss: {val_loss:.3f}")
 

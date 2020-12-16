@@ -15,6 +15,7 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 
+# TODO: use different hyperparameters according to data or try out a few settings and find best of it.
 # models
 models = {
     "Nearest Neighbors": KNeighborsClassifier(3),
