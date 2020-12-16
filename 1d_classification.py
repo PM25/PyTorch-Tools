@@ -67,33 +67,33 @@ if __name__ == "__main__":
     model = modelwrapper.train(train_loader, val_loader, max_epochs=50)
 
     # pred_y = model(torch.from_numpy(numpy_X).float().to("cuda:0"))
-    model = model.eval().cpu()
-    with torch.no_grad():
-        outputs = model(torch.from_numpy(numpy_X).float().cpu())
-        _, pred_y = torch.max(outputs, 1)
-    dataset = pd.DataFrame(numpy_y)
-    dataset.columns = ["True"]
-    dataset2 = pd.DataFrame(pred_y.cpu().detach().numpy())
-    dataset2.columns = ["Prediction"]
-    for i in range(len(cats)):
-        dataset[dataset == i] = cats[i]
-        dataset2[dataset2 == i] = cats[i]
+    # model = model.eval().cpu()
+    # with torch.no_grad():
+    #     outputs = model(torch.from_numpy(numpy_X).float().cpu())
+    #     _, pred_y = torch.max(outputs, 1)
+    # dataset = pd.DataFrame(numpy_y)
+    # dataset.columns = ["True"]
+    # dataset2 = pd.DataFrame(pred_y.cpu().detach().numpy())
+    # dataset2.columns = ["Prediction"]
+    # for i in range(len(cats)):
+    #     dataset[dataset == i] = cats[i]
+    #     dataset2[dataset2 == i] = cats[i]
 
-    tmp_df = train_X.iloc[
-        :,
-        ~train_X.columns.isin(
-            [
-                "is_canceled",
-                "ID",
-                "adr",
-                "reservation_status",
-                "reservation_status_date",
-            ]
-        ),
-    ]
+    # tmp_df = train_X.iloc[
+    #     :,
+    #     ~train_X.columns.isin(
+    #         [
+    #             "is_canceled",
+    #             "ID",
+    #             "adr",
+    #             "reservation_status",
+    #             "reservation_status_date",
+    #         ]
+    #     ),
+    # ]
 
-    results_df = pd.concat([tmp_df, dataset, dataset2], axis=1)
-    results_df.to_csv("result.csv", index=False)
+    # results_df = pd.concat([tmp_df, dataset, dataset2], axis=1)
+    # results_df.to_csv("result.csv", index=False)
     # # evaluate the model
     report = modelwrapper.classification_report(test_loader, list(cats), visualize=True)
     with open("dl_test.txt", "a") as ofile:

@@ -67,4 +67,4 @@ if __name__ == "__main__":
     modelwrapper.train(train_loader, val_loader, max_epochs=20)
 
     # evaluate the model
-    modelwrapper.classification_report(test_loader, classes)
+    modelwrapper.classification_report(test_loader, classes, visualize=True)

@@ -18,7 +18,9 @@ class Visualization:
             df_cm.columns = [name for name in self.target_names]
             df_cm.index = [name for name in self.target_names]
         plt.figure(f"{self.counter}. Confusion Matrix")
-        sns.heatmap(df_cm, annot=True)
+        ax = sns.heatmap(df_cm, annot=True)
+        ax.set(xlabel="Predicted label", ylabel="True label", title="Confustion Matrix")
+        plt.tight_layout()
         self.counter += 1
 
     def classification_report(self):
@@ -30,7 +32,9 @@ class Visualization:
         for key in report:
             report[key].pop("support", None)
         plt.figure(f"{self.counter}. Classification Report")
-        sns.heatmap(pd.DataFrame(report).T, annot=True)
+        ax = sns.heatmap(pd.DataFrame(report).T, annot=True)
+        ax.set(title="Classification Report")
+        plt.tight_layout()
         self.counter += 1
 
     def show(self):
