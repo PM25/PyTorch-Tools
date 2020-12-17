@@ -18,12 +18,10 @@ from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 # TODO: use different hyperparameters according to data or try out a few settings and find best of it.
 # models
 models = {
-    "Nearest Neighbors": KNeighborsClassifier(3),
-    "Decision Tree": DecisionTreeClassifier(max_depth=25),
-    "Random Forest": RandomForestClassifier(
-        max_depth=25, n_estimators=100, max_features=10
-    ),
-    "Neural Net": MLPClassifier(alpha=0.001, max_iter=100000),
+    "Nearest Neighbors": KNeighborsClassifier(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier(),
+    "Neural Net": MLPClassifier(),
     "AdaBoost": AdaBoostClassifier(),
     "Naive Bayes": GaussianNB(),
     "QDA": QuadraticDiscriminantAnalysis(),
@@ -54,7 +52,7 @@ class MLModelWrapper:
         self.test_y = test_y
 
     def test_classifiers(self, save=True):
-        print("*Quick test for classification models!")
+        print("*Quick test for multiple classification models!")
         threads = []
         for name in classifier_names:
             print(f"*start training: {name} model.")

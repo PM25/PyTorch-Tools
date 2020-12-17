@@ -17,12 +17,10 @@ class EarlyStopping:
             self.counter = 0
             self.best_score = score
             self.checkpoint.save(model, optimizer, val_loss, epoch)
-        elif score < self.best_score + self.delta:
+        elif score <= self.best_score + self.delta:
             self.counter += 1
             if self.counter >= self.patience:
                 self.early_stop = True
-        else:
-            self.counter = 0
 
     # reset the counter
     def reset_counter(self):
