@@ -8,7 +8,9 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 #%%
-(X_np, y_np), reservation_status_cats = processing_data(binary=False)
+X_df, y_df = processing_data("reservation_status")
+X_np, y_np = X_df.to_numpy(), y_df.to_numpy()
+reservation_status_cats = y_df.cat.categories
 print(f"X_np's shape: {X_np.shape}")
 print(f"y_np's shape: {y_np.shape}")
 

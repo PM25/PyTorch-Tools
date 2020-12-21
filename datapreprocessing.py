@@ -1,7 +1,9 @@
+#%%
 from utils import *
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_string_dtype, is_numeric_dtype
 
 
 def get_columns_with_nan(df):
@@ -11,7 +13,8 @@ def get_columns_with_nan(df):
     return columns_with_nan
 
 
-def processing_data(fname="data/train.csv", binary=False):
+# target is one of the ["is_canceled", "reservation_status", "adr"]
+def processing_data(target="is_canceled", fname="data/train.csv", use_dummies=True):
     train_df = pd.read_csv(fname)
 
     train_df["expected_room"] = 0
@@ -28,6 +31,7 @@ def processing_data(fname="data/train.csv", binary=False):
     # TrainDataVisualization(train_df, None,).correlation_matrix().show()
 
     exclude_columns = [
+        target,
         "is_canceled",
         "ID",
         "adr",
@@ -43,10 +47,10 @@ def processing_data(fname="data/train.csv", binary=False):
         "previous_bookings_not_canceled",
     ]
 
-    if binary:
-        y_df = train_df["is_canceled"].astype("category")
+    if is_numeric_dtype(train_df[target]):
+        y_df = train_df[target]
     else:
-        y_df = train_df["reservation_status"].astype("category")
+        y_df = train_df[target].astype("category")
         reservation_status_cats = y_df.cat.categories
         y_df = y_df.cat.codes  # convert categories data to numeric codes
 
@@ -58,18 +62,16 @@ def processing_data(fname="data/train.csv", binary=False):
     for col in nan_cols:
         X_df[col] = X_df[col].fillna("Null").astype(str)
 
-    for col in X_df.select_dtypes(include=["object"]).columns:
-        X_df[col] = X_df[col].factorize()[0]
-    # X_df = pd.get_dummies(X_df)
+    if use_dummies:
+        X_df = pd.get_dummies(X_df)
+    else:
+        for col in X_df.select_dtypes(include=["object"]).columns:
+            X_df[col] = X_df[col].factorize()[0]
+
     print(f"Columns that contain NaN: {list(get_columns_with_nan(X_df))}")
 
-    X_np = X_df.to_numpy()
-    y_np = y_df.to_numpy()
-    if binary:
-        return (X_np, y_np)
-    else:
-        return (X_np, y_np), reservation_status_cats
+    return (X_df, y_df)
 
 
 if __name__ == "__main__":
-    data = processing_data()
+    X, y = processing_data("adr")

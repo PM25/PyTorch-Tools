@@ -9,7 +9,8 @@ import torch.nn.functional as F
 
 
 #%%
-X_np, y_np = processing_data(binary=True)
+X_df, y_df = processing_data("is_canceled")
+X_np, y_np = X_df.to_numpy(), y_df.to_numpy()
 print(f"X_np's shape: {X_np.shape}")
 print(f"y_np's shape: {y_np.shape}")
 

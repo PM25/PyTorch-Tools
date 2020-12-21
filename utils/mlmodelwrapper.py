@@ -56,7 +56,7 @@ class MLModelWrapper:
         )
 
     # filter_type can be one of the type ['classifier', 'regressor', 'cluster', 'transformer']
-    def quick_test(self, filter_type="classifier", save=True):
+    def quick_test(self, filter_type="classifier", max_threads=5, save=True):
         print("*Quick test for multiple classification models!")
         threads = []
         for name, clf_class in all_estimators(filter_type):
