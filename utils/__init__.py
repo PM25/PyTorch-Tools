@@ -5,7 +5,7 @@ from utils.loaddata import LoadData
 from utils.mlmodelwrapper import MLModelWrapper
 from utils.models import (
     BinaryClassificationModel,
-    ClassificationModel,
+    Input1DModel,
     ImageClassificationModel,
 )
 from utils.visualization import Visualization, TrainDataVisualization
@@ -16,7 +16,7 @@ __all__ = [
     "ModelWrapper",
     "LoadData",
     "BinaryClassificationModel",
-    "ClassificationModel",
+    "Input1DModel",
     "ImageClassificationModel",
     "MLModelWrapper",
     "Visualization",

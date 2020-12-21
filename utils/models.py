@@ -31,7 +31,7 @@ class BinaryClassificationModel(nn.Module):
         return self.sigmoid(x)
 
 
-class ClassificationModel(nn.Module):
+class Input1DModel(nn.Module):
     def __init__(self, nfeatures, nout):
         super().__init__()
         self.fc1 = nn.Linear(nfeatures, 512)
