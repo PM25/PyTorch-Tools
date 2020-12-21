@@ -15,6 +15,9 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 
+from sklearn.utils import all_estimators
+from sklearn.model_selection import train_test_split
+
 # TODO: use different hyperparameters according to data or try out a few settings and find best of it.
 # models
 models = {
@@ -43,25 +46,36 @@ classifier_names = [
     "Gaussian Process",
 ]
 
+RANDOM_SEED = 0
+
 
 class MLModelWrapper:
-    def __init__(self, train_X, train_y, test_X, test_y):
-        self.train_X = train_X
-        self.train_y = train_y
-        self.test_X = test_X
-        self.test_y = test_y
+    def __init__(self, X_np, y_np):
+        self.train_X, self.test_X, self.train_y, self.test_y = train_test_split(
+            X_np, y_np, test_size=0.25, random_state=RANDOM_SEED
+        )
 
-    def test_classifiers(self, save=True):
+    # filter_type can be one of the type ['classifier', 'regressor', 'cluster', 'transformer']
+    def quick_test(self, filter_type="classifier", save=True):
         print("*Quick test for multiple classification models!")
         threads = []
-        for name in classifier_names:
+        for name, clf_class in all_estimators(filter_type):
             print(f"*start training: {name} model.")
-            clf = models.get(name, None)
-            thread = TrainModelThread(
-                self.train_X, self.train_y, self.test_X, self.test_y, clf, name, save
-            )
-            threads.append(thread)
-            thread.start()
+            try:
+                clf = clf_class()
+                thread = TrainModelThread(
+                    self.train_X,
+                    self.train_y,
+                    self.test_X,
+                    self.test_y,
+                    clf,
+                    name,
+                    save,
+                )
+                threads.append(thread)
+                thread.start()
+            except:
+                print(f"*Failed to initialize model: {name}.")
 
         for thread in threads:
             thread.join()

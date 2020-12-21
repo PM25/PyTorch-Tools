@@ -13,7 +13,7 @@ class EarlyStopping:
 
     def __call__(self, model, val_loss, optimizer, epoch=None):
         score = -val_loss
-        if self.best_score == None or score > self.best_score:
+        if self.best_score == None or score > self.best_score + self.delta:
             self.counter = 0
             self.best_score = score
             self.checkpoint.save(model, optimizer, val_loss, epoch)

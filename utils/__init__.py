@@ -8,6 +8,7 @@ from utils.models import (
     ClassificationModel,
     ImageClassificationModel,
 )
+from utils.visualization import Visualization, TrainDataVisualization
 
 __all__ = [
     "Checkpoint",
@@ -18,4 +19,6 @@ __all__ = [
     "ClassificationModel",
     "ImageClassificationModel",
     "MLModelWrapper",
+    "Visualization",
+    "TrainDataVisualization",
 ]

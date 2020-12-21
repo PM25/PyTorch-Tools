@@ -1,3 +1,5 @@
+from utils import *
+
 import numpy as np
 import pandas as pd
 
@@ -9,9 +11,8 @@ def get_columns_with_nan(df):
     return columns_with_nan
 
 
-def processing_data(binary=False):
-    # train_df = pd.read_csv("data/train.csv")
-    train_df = pd.read_csv("data/hotel_bookings.csv")
+def processing_data(fname="data/train.csv", binary=False):
+    train_df = pd.read_csv(fname)
 
     train_df["expected_room"] = 0
     train_df.loc[
@@ -23,6 +24,8 @@ def processing_data(binary=False):
         train_df["previous_cancellations"] > train_df["previous_bookings_not_canceled"],
         "net_cancelled",
     ] = 1
+
+    # TrainDataVisualization(train_df, None,).correlation_matrix().show()
 
     exclude_columns = [
         "is_canceled",
@@ -66,3 +69,7 @@ def processing_data(binary=False):
         return (X_np, y_np)
     else:
         return (X_np, y_np), reservation_status_cats
+
+
+if __name__ == "__main__":
+    data = processing_data()
